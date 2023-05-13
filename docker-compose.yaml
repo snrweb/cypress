@@ -1,0 +1,64 @@
+version: "3.6"
+services:
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./build/php.ini:/usr/local/etc/php/php.ini
+      - ./:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+    working_dir: /var/www/html
+    links:
+      - db
+    networks:
+      - cypress_network
+    command: composer install
+    command: php artisan serve --host 0.0.0.0
+
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - 3306:3306
+    volumes:
+      - ./build/mysql:/etc/mysql/conf.d
+      - cypress-data:/var/lib/mysql
+    networks:
+      - cypress_network
+
+  memcached:
+    image: 'bitnami/memcached:latest'
+    environment:
+      - MEMCACHED_USERNAME=root
+    networks:
+      - cypress_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    environment:
+      UPLOAD_LIMIT: 990M
+      MAX_EXECUTION_TIME: 950000
+    ports:
+      - 8161:80
+    depends_on:
+      - db
+    networks:
+      - cypress_network
+
+volumes:
+  cypress-conf:
+  cypress-data:
+
+networks:
+  cypress_network:
+    driver: bridge
